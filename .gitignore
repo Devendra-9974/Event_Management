@@ -1,0 +1,44 @@
+# Maven build artifacts
+target/
+*.war
+*.jar
+*.class
+
+# IDE configuration files
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+*.ipr
+*.iws
+
+# Sensitive and runtime local data
+cookies*.txt
+*.env
+*.env.local
+*.env.*.local
+application-local.properties
+secrets.properties
+
+# Logs and runtime dumps
+*.log
+logs/
+hs_err_pid*
+replay_pid*
+
+# OS and system files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Temporary files
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+tmp/
+temp/
