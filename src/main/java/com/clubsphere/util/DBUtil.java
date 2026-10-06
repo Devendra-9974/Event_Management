@@ -57,6 +57,22 @@ public class DBUtil {
         if (envVal != null && !envVal.trim().isEmpty()) {
             return envVal.trim();
         }
+        // Handle common cloud database alias variables
+        if ("DB_URL".equals(envKey)) {
+            String alt = System.getenv("DATABASE_URL");
+            if (alt != null && !alt.trim().isEmpty()) {
+                String trimmed = alt.trim();
+                return trimmed.startsWith("jdbc:") ? trimmed : "jdbc:" + trimmed;
+            }
+        } else if ("DB_USERNAME".equals(envKey)) {
+            String altUser = System.getenv("DB_USER");
+            if (altUser == null || altUser.isBlank()) altUser = System.getenv("MYSQLUSER");
+            if (altUser != null && !altUser.trim().isEmpty()) return altUser.trim();
+        } else if ("DB_PASSWORD".equals(envKey)) {
+            String altPass = System.getenv("MYSQLPASSWORD");
+            if (altPass != null && !altPass.trim().isEmpty()) return altPass.trim();
+        }
+
         String sysProp = System.getProperty(envKey);
         if (sysProp != null && !sysProp.trim().isEmpty()) {
             return sysProp.trim();

@@ -28,6 +28,9 @@ public class AuthenticationFilter implements Filter {
         String contextPath = httpRequest.getContextPath();
         String uri = httpRequest.getRequestURI();
         String path = uri.substring(contextPath.length());
+        if (path.isEmpty()) {
+            path = "/";
+        }
 
         // Whitelist public assets and endpoints
         boolean isPublicResource = path.startsWith("/css/") ||

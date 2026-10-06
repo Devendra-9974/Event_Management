@@ -33,7 +33,10 @@ public class QRCodeServlet extends HttpServlet {
         }
 
         // Construct the full absolute registration URL
-        String baseUrl = DBUtil.getProperty("app.base.url", "http://localhost:8080/aryaClgClubSphere");
+        String baseUrl = DBUtil.getProperty("app.base.url", "http://localhost:8080/aryaClgClubSphere").trim();
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
         String registrationUrl = baseUrl + "/event/register?token=" + event.getQrToken();
 
         boolean download = "true".equalsIgnoreCase(req.getParameter("download"));

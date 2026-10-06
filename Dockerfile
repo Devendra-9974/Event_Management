@@ -24,5 +24,5 @@ COPY --from=builder /app/target/aryaClgClubSphere.war /usr/local/tomcat/webapps/
 # Expose default HTTP port
 EXPOSE 8080
 
-# Launch Tomcat
-CMD ["catalina.sh", "run"]
+# Launch Tomcat (dynamically bind to $PORT if specified by cloud provider, default 8080)
+CMD ["sh", "-c", "sed -i 's/port=\"8080\"/port=\"'\"${PORT:-8080}\"'\"/' /usr/local/tomcat/conf/server.xml && catalina.sh run"]
