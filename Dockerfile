@@ -18,11 +18,18 @@ LABEL maintainer="Arya College of Engineering & IT, Jaipur"
 # Clean default Tomcat webapps
 RUN rm -rf /usr/local/tomcat/webapps/*
 
+# Disable Tomcat's shutdown port (-1 disables the shutdown socket completely so it never binds to TCP)
+RUN sed -i 's/<Server port="8005"/<Server port="-1"/' /usr/local/tomcat/conf/server.xml
+
 # Copy packaged application as ROOT.war so it is mounted at root context path /
 COPY --from=builder /app/target/aryaClgClubSphere.war /usr/local/tomcat/webapps/ROOT.war
 
-# Expose default HTTP port
+# Default fallback port for local container testing
+ENV PORT=8080
 EXPOSE 8080
 
-# Launch Tomcat (dynamically bind to $PORT if specified by cloud provider, default 8080)
-CMD ["sh", "-c", "sed -i 's/port=\"8080\"/port=\"'\"${PORT:-8080}\"'\"/' /usr/local/tomcat/conf/server.xml && catalina.sh run"]
+# Launch Tomcat:
+# 1. Guarantee shutdown port is disabled (-1) so no shutdown socket exists in container
+# 2. Dynamically bind HTTP Connector to Render's $PORT (fallback 8080)
+# 3. Start Tomcat in foreground
+CMD ["sh", "-c", "sed -i 's/<Server port=\"[0-9]*\"/<Server port=\"-1\"/' /usr/local/tomcat/conf/server.xml && sed -i 's/Connector port=\"[0-9]*\"/Connector port=\"'\"${PORT:-8080}\"'\"/' /usr/local/tomcat/conf/server.xml && catalina.sh run"]
