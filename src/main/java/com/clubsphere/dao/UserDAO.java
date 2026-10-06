@@ -21,9 +21,12 @@ public class UserDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return mapUserWithClub(rs);
+                } else {
+                    System.err.println("[UserDAO.authenticate] No ACTIVE user record found in database for username/email: '" + usernameOrEmail + "'");
                 }
             }
         } catch (SQLException e) {
+            System.err.println("[UserDAO.authenticate ERROR] SQLException during authentication for '" + usernameOrEmail + "': " + e.getMessage());
             e.printStackTrace();
         }
         return null;

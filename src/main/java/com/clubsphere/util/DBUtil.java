@@ -5,7 +5,9 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import java.io.InputStream;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Properties;
 
 /**
@@ -26,10 +28,50 @@ public class DBUtil {
             // Explicitly load MySQL driver
             Class.forName("com.mysql.cj.jdbc.Driver");
 
+            String rawUrl = getEnvOrProperty("DB_URL", "db.url", "jdbc:mysql://localhost:3306/clubsphere_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
+            String username = getEnvOrProperty("DB_USERNAME", "db.username", "root");
+            String password = getEnvOrProperty("DB_PASSWORD", "db.password", "root");
+
+            boolean isEnvUrl = System.getenv("DB_URL") != null && !System.getenv("DB_URL").trim().isEmpty();
+            boolean isEnvUser = System.getenv("DB_USERNAME") != null && !System.getenv("DB_USERNAME").trim().isEmpty();
+            boolean isEnvPass = System.getenv("DB_PASSWORD") != null && !System.getenv("DB_PASSWORD").trim().isEmpty();
+
+            // Extract host and database name safely without exposing credentials
+            String maskedUrl = rawUrl.replaceAll(":[^/@]+@", ":***@");
+            String host = "unknown";
+            String dbName = "unknown";
+            try {
+                int protoIdx = rawUrl.indexOf("//");
+                if (protoIdx != -1) {
+                    String afterProto = rawUrl.substring(protoIdx + 2);
+                    int slashIdx = afterProto.indexOf('/');
+                    if (slashIdx != -1) {
+                        host = afterProto.substring(0, slashIdx);
+                        int questionIdx = afterProto.indexOf('?', slashIdx);
+                        if (questionIdx != -1) {
+                            dbName = afterProto.substring(slashIdx + 1, questionIdx);
+                        } else {
+                            dbName = afterProto.substring(slashIdx + 1);
+                        }
+                    }
+                }
+            } catch (Exception parseEx) {
+                // Ignore parse errors
+            }
+
+            System.out.println("================== [DB_DIAG START] ==================");
+            System.out.println("[DB_DIAG] DB_URL read from environment: " + isEnvUrl);
+            System.out.println("[DB_DIAG] DB_USERNAME read from environment: " + isEnvUser);
+            System.out.println("[DB_DIAG] DB_PASSWORD read from environment: " + isEnvPass);
+            System.out.println("[DB_DIAG] Target Host: " + host);
+            System.out.println("[DB_DIAG] Target Database Name: " + dbName);
+            System.out.println("[DB_DIAG] Target JDBC URL: " + maskedUrl);
+            System.out.println("[DB_DIAG] Target DB Username: " + username);
+
             HikariConfig config = new HikariConfig();
-            config.setJdbcUrl(getEnvOrProperty("DB_URL", "db.url", "jdbc:mysql://localhost:3306/clubsphere_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"));
-            config.setUsername(getEnvOrProperty("DB_USERNAME", "db.username", "root"));
-            config.setPassword(getEnvOrProperty("DB_PASSWORD", "db.password", "root"));
+            config.setJdbcUrl(rawUrl);
+            config.setUsername(username);
+            config.setPassword(password);
 
             int maxPoolSize = Integer.parseInt(props.getProperty("db.pool.maximumPoolSize", "10"));
             int minIdle = Integer.parseInt(props.getProperty("db.pool.minimumIdle", "2"));
@@ -46,9 +88,30 @@ public class DBUtil {
             config.addDataSourceProperty("useServerPrepStmts", "true");
 
             dataSource = new HikariDataSource(config);
+            System.out.println("[DB_DIAG] HikariDataSource initialized: SUCCESS");
+
+            // Test connection and execute SELECT DATABASE(), COUNT(*) FROM users
+            try (Connection conn = dataSource.getConnection()) {
+                System.out.println("[DB_DIAG] getConnection() test: SUCCESS (Valid connection obtained)");
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT DATABASE(), COUNT(*) FROM users")) {
+                    if (rs.next()) {
+                        String activeDb = rs.getString(1);
+                        int count = rs.getInt(2);
+                        System.out.println("[DB_DIAG] Query executed: SELECT DATABASE(), COUNT(*) FROM users");
+                        System.out.println("[DB_DIAG] Query result: DATABASE() = " + activeDb + ", COUNT(*) = " + count);
+                    }
+                }
+            } catch (SQLException testEx) {
+                System.err.println("[DB_DIAG] Initial connection test or SELECT query FAILED: " + testEx.getMessage());
+                testEx.printStackTrace();
+            }
+            System.out.println("================== [DB_DIAG END] ====================");
         } catch (Exception e) {
-            System.err.println("CRITICAL: Failed to initialize HikariCP connection pool: " + e.getMessage());
+            System.err.println("================== [DB_DIAG CRITICAL ERROR] ==================");
+            System.err.println("[DB_DIAG] CRITICAL: Failed to initialize HikariCP connection pool: " + e.getMessage());
             e.printStackTrace();
+            System.err.println("==============================================================");
         }
     }
 
